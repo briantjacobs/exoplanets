@@ -114,7 +114,7 @@ body {
   margin: 0;
 }
 
-path.line {
+path.line, line {
   fill: none;
   stroke: #ddd;
   stroke-width: 1.5px;

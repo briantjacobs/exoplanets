@@ -96,7 +96,7 @@ exo.radial = function(shapes, stage) {
 	d3.selectAll(".x, .y").each(function(){
 			d3.select(this).transition()
 		.duration(2000)
-		.attr("opacity", "0")//.delay(2000).remove();
+		.attr("opacity", "0");//.delay(2000).remove();
 	});
 
 
@@ -105,21 +105,31 @@ exo.radial = function(shapes, stage) {
 			.attr("transform", "translate(" + exo.width / 2 + "," + exo.height / 2 + ")");//scale(3)");
 
 	shapes.each(function(){
-		var angle = exo.randRange(-180,180);
+		var g = d3.select(this);
+ 
 
-		d3.select(this).transition()
+		//this will fold out circularly
 
-		//this will fold out circularly 
-		 
+		//translate the circle
+		g.select(".planetGroup").transition().duration(3000)
+			.attr("transform", function(d) {
+				return "translate("+exo.scaleX.axis(d.axis)+",0)";
+			});
+		//this feels hackish
+		//rotate the group
+		g.transition().duration(3000)
+			//.each(exo.createOrbits(g.datum().angle));
 
-		.duration(3000)
-			.attr("cx", function(d) {
-				return exo.scaleX.axis(d.axis);
-			})
-			.attr("cy", 0)
-			//.attr("transform", "rotate(" + angle + ")")
-			.each(exo.createOrbits(angle));
-		
+
+// how too store rotation data for when adding future text objects?
+// store rotation data for updating transition speed?
+// store original rotation and negate it
+//		planets.select('.sun').append("text")
+//				.text('yo!').each(exo.reverseOrbit(0));
+			
+
+
+	//move teh circle and text (make this a new group), translate the whole gropu	
 
 		/*
 		//this will explode out from a collapse state
@@ -164,6 +174,31 @@ exo.createOrbits = function(angle) {
 
 			//.attr("transform", "rotate(" + angle + ")")
 			.each("end",exo.createOrbits(angle));
+			//.attr("transform", "rotate(" + angle + ")")
+		
+	};
+};
+
+exo.reverseOrbit = function(angle) {
+	return function() {
+		var obj = d3.select(this)
+		//var angle = 360-obj.datum().angle;
+		obj//.select('text')
+			.transition()
+			.ease("linear")
+			.duration(function(d,i){
+				//var periodInYears = d.period/365;
+				//console.log(periodInYears)
+				//return periodInYears*30000
+				return (exo.YEAR*d.period);// /(2 * Math.PI);
+			})
+			.attrTween("transform", function(d) {
+				return d3.interpolateString(
+					"rotate("+ angle +")",
+					"rotate(" + (angle + 360) + ")"
+				);
+			})
+			.each("end",exo.reverseOrbit(angle));
 	};
 };
 
@@ -240,12 +275,8 @@ exo.graph = function(options) {
 			.attr("transform", "rotate(0)")
 			//.attr("transform", "translate(0,0)")
 		//	.attr("transform", "translate("+ (exo.width / 2)*-1 +"0,0)")
-			.attr("cy", function(d) {
-				return exo.scaleY[opt.yScale](d[opt.yScale]);
-			})
-			.attr("cx", function(d) {
-				//d.axis
-				return exo.scaleX[opt.xScale](d[opt.xScale]);
+			.attr("transform", function(d) {
+				return "translate("+exo.scaleX[opt.xScale](d[opt.xScale])+","+exo.scaleY[opt.yScale](d[opt.yScale])+")";
 			});
 	});
 };
@@ -254,13 +285,36 @@ exo.addRing = function(stage, radius) {
 	stage.append("g")
 				.attr("class", "rings")
 				.append("circle")
-					.attr("cx", 0)
-					.attr("cy", 0)
+					//.attr("cx", 0)
+					//.attr("cy", 0)
 					.attr("r", function(d){
 						return exo.scaleX.axis(radius);
 				});
 };
 
+exo.createLabelGroup = function(coords, selection) {
+		var offset = d3.mouse(selection);
+		//console.log(coords[0], offset[0], coords[1] , offset[1],(Math.atan2(coords[0] + offset[0], coords[1] - offset[1]) * (180/Math.PI)))
+		
+//coord system of page x,y and circle offset have a reversed y coordinate
+		var angle = (Math.atan2(coords[0] + offset[0], coords[1] - offset[1]) * (180/Math.PI)) - 90;
+		var labelGroup = d3.select(selection).append("g").attr("class", "labelGroup");
+			labelGroup.append("text")
+				.attr("x", 33)
+				.text(function(d){
+					return d.koi;
+				});
+			labelGroup.append("svg:line")
+				.attr("x1", 0)
+				.attr("x2", 30)
+				.attr("y1", 0)
+				.attr("y2", 0);
+			labelGroup.each(exo.reverseOrbit(angle));
+};
+
+exo.removeLabelGroup = function(selection) {
+	selection.select(".labelGroup").remove();
+};
 
 
 $(function(){
@@ -311,6 +365,7 @@ d3.csv("data/planets2012_2.csv", function(data) {
 		d.radius = parseFloat(d.radius);
 		d.axis = parseFloat(d.axis);
 		d.temp = parseFloat(d.temp);
+		d["angle"] = exo.randRange(-180,180);
 	});
 
 	//create and translate the initial group
@@ -320,15 +375,19 @@ d3.csv("data/planets2012_2.csv", function(data) {
 
 	//SUN
 	var sunData = {
-		period: 0,
+		angle: exo.randRange(-180,180),
+		koi: "sun",
+		period: 10,
 		radius: 3,
-		axis: 0,
+		axis: .2,
 		temp: 254
 	};
 	data.push(sunData);
 
 	//EARTH
 	var earthData = {
+		angle: exo.randRange(-180,180),		
+		koi: "earth",
 		period: 365,
 		radius: 1,
 		axis: exo.AU,
@@ -339,20 +398,38 @@ d3.csv("data/planets2012_2.csv", function(data) {
 
 
 	//add the planets
-	var planets = planetStage.selectAll(".planetGroup")
+	var planets = planetStage.selectAll(".item")
 					.data(data)
 					.enter()
 					.append("g")
-					.attr("class","planetGroup")
-					.on("mouseover", function(d) {
-						//d3.select(this).append("text").text('whatever');
-					});
+					.attr("class","item");
 
-	planets.append("circle")
-				.attr("class", "planet")
-					.each(exo.createPlanets);
-	/*planets.append("text")
-			.text('yo!')
+
+	var planetObj = planets.append("g")
+			.attr("class", function(d){
+				return d.koi + " planetGroup";
+			});
+
+		planetObj.on("mouseover", function(d) {
+			exo.createLabelGroup([d3.event.x-(exo.width/2), d3.event.y-(exo.height/2)], this);
+				});
+		planetObj.on("mouseout", function(d){
+			exo.removeLabelGroup(d3.select(this));
+		});
+
+		planetObj.append("circle")
+					.attr("class", "planet")
+						.each(exo.createPlanets);
+
+
+
+/*var newLine =  d3.svg.line()
+					    .interpolate("basis")
+					    .x(function(d, i) { return x(i); })
+					    .y(function(d, i) { return y(d); });
+				labelGroup.append("path")
+				    .attr("class", "line")
+				    .attr("d", function(d) { return newLine(d) + "Z"; });
 */
 
 
@@ -480,6 +557,8 @@ rotationChanger.onChange(function(value) {
 
 });
 
+
+//hide all but the first text
 
 
 
