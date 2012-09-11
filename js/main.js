@@ -118,7 +118,7 @@ exo.radial = function(shapes, stage) {
 		//this feels hackish
 		//rotate the group
 		g.transition().duration(3000)
-			//.each(exo.createOrbits(g.datum().angle));
+			.each(exo.createOrbits(g.datum().angle));
 
 
 // how too store rotation data for when adding future text objects?
@@ -180,6 +180,9 @@ exo.createOrbits = function(angle) {
 };
 
 exo.reverseOrbit = function(angle) {
+
+//subtract this by 90?
+
 	return function() {
 		var obj = d3.select(this)
 		//var angle = 360-obj.datum().angle;
@@ -293,12 +296,23 @@ exo.addRing = function(stage, radius) {
 };
 
 exo.createLabelGroup = function(coords, selection) {
-		var offset = d3.mouse(selection);
+
+		//YOU ARE IN THE MIDDLE OF TRYING TO BIND THE STRIPPED ROTATION VALUE OF THE PARENT TO TEH GROUP INSIDE TO STABILIZE IT
+
+		selection = d3.select(selection).select('.planetGroup')
+		//var offset = d3.mouse(selection);
 		//console.log(coords[0], offset[0], coords[1] , offset[1],(Math.atan2(coords[0] + offset[0], coords[1] - offset[1]) * (180/Math.PI)))
 		
-//coord system of page x,y and circle offset have a reversed y coordinate
-		var angle = (Math.atan2(coords[0] + offset[0], coords[1] - offset[1]) * (180/Math.PI)) - 90;
-		var labelGroup = d3.select(selection).append("g").attr("class", "labelGroup");
+		//coord system of page x,y and circle offset have a reversed y coordinate system
+
+		//you need to get the angle onhover  because you cant get current rotation angle without an expensive operation?
+		//var angle = 360-(Math.atan2(coords[0] - offset[0], coords[1] + offset[1]) * (180/Math.PI));
+		/*d3.select('.planetStage').append('circle')
+			.attr('cx',coords[0] - offset[0])
+			.attr('cy',coords[1] - offset[1])
+			.attr('r', 3);*/
+
+		var labelGroup = selection.append("g").attr("class", "labelGroup");
 			labelGroup.append("text")
 				.attr("x", 33)
 				.text(function(d){
@@ -309,7 +323,7 @@ exo.createLabelGroup = function(coords, selection) {
 				.attr("x2", 30)
 				.attr("y1", 0)
 				.attr("y2", 0);
-			labelGroup.each(exo.reverseOrbit(angle));
+			labelGroup.each(exo.reverseOrbit(360-coords));
 };
 
 exo.removeLabelGroup = function(selection) {
@@ -410,8 +424,13 @@ d3.csv("data/planets2012_2.csv", function(data) {
 				return d.koi + " planetGroup";
 			});
 
-		planetObj.on("mouseover", function(d) {
-			exo.createLabelGroup([d3.event.x-(exo.width/2), d3.event.y-(exo.height/2)], this);
+		planets.on("mouseover", function(d) {
+			var rotation = d3.select(this).attr('transform');
+			//this is a weird hack
+				rotation = rotation.split("rotate(");
+				rotation = parseFloat(rotation[1]);
+			//exo.createLabelGroup([d3.event.x-(exo.width/2), d3.event.y-(exo.height/2)], this);
+			exo.createLabelGroup(rotation, this);
 				});
 		planetObj.on("mouseout", function(d){
 			exo.removeLabelGroup(d3.select(this));
