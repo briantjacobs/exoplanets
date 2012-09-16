@@ -156,5 +156,6 @@ path.area {
 
 .planetStage > circle {fill: white;}
 
+.planet {stroke: rgba(0,0,0,.3); stroke-width:.25px;}
 
 

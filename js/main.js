@@ -24,10 +24,18 @@ exo.dat = exo.dat || {};
 exo.dat = {
 	"Amount": .5
 }
-
+exo.duration = 4000;
 exo.width = $('#viz').width();
 exo.height = $('#viz').height();
+
 exo.m = {t: 80, r: 80, b: 80, l: 80};
+exo.containerWidth = exo.width;
+
+exo.renderWidth = function() {
+	return exo.containerWidth-exo.m.l-exo.m.r;
+}
+
+
 // Conversion constants
 exo.deg = 0;
 
@@ -35,7 +43,7 @@ exo.ER = 1;           // Earth Radius, in pixels
 
 //radius of earth 1/4 of the screen
 exo.AU = 1; //$('#viz').width()/4;        // Astronomical Unit, in pixels
-exo.YEAR = 7000;     // One year, in frames
+exo.YEAR = 15000;     // One year, in frames
 
 // Max/Min numbers
 //exo.maxTemp = 3257;
@@ -66,7 +74,7 @@ exo.tflatness = 0;
 
 exo.randRange = function(min,max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+};
 
 
 exo.createPlanets = function() {
@@ -78,10 +86,10 @@ exo.createPlanets = function() {
 			.attr("fill", function(d) {
 				//how to handle the negative values
 				if (d.temp > 0) {
-					return d3.hsl("hsl("+exo.scaleColor(Math.sqrt(d.temp))+",100%, 50%)");
+					return d3.hsl("hsl("+exo.scaleColor(d.temp)+",100%, 55%)");
 				}
 				else {
-					return d3.hsl("hsl(200,100%, 50%");
+					return d3.hsl("hsl(200,100%, 100%");
 				}
 			});
 };
@@ -101,23 +109,22 @@ exo.radial = function(shapes, stage) {
 
 
 	stage.transition()
-			.duration(3000)
-			.attr("transform", "translate(" + exo.width / 2 + "," + exo.height / 2 + ")");//scale(3)");
+			.duration(exo.duration)
+			.attr("transform", "translate(" + exo.width / 2 + "," + exo.height / 2 + ")");
 
 	shapes.each(function(){
 		var g = d3.select(this);
  
 
 		//this will fold out circularly
-
 		//translate the circle
-		g.select(".planetGroup").transition().duration(3000)
+		g.select(".planetGroup").transition().duration(exo.duration)
 			.attr("transform", function(d) {
-				return "translate("+exo.scaleX.axis(d.axis)+",0)";
+				return "translate("+exo.scaleXRadial.axis(d.axis)+",0)";
 			});
 		//this feels hackish
 		//rotate the group
-		g.transition().duration(3000)
+		g.transition().duration(exo.duration)
 			.each(exo.createOrbits(g.datum().angle));
 
 
@@ -133,11 +140,11 @@ exo.radial = function(shapes, stage) {
 
 		/*
 		//this will explode out from a collapse state
-		.duration(3000)
+		.duration(exo.duration)
 			.attr("transform", "rotate(" + angle + ")")
 			.each("end", function() {
 				d3.select(this).transition()
-				.duration(3000)
+				.duration(exo.duration)
 				.attr("cx", function(d) {
 					return exo.scaleX(d.axis);
 				})
@@ -208,6 +215,7 @@ exo.reverseOrbit = function(angle) {
 
 
 exo.graph = function(options) {
+	//exo.containerWidth = (exo.width-exo.m.l-exo.m.r);
 
 	//TODO:
 	// make proper labels for each graph
@@ -225,18 +233,17 @@ exo.graph = function(options) {
 		yLabel: ''
 	};
     var opt = $.extend({}, this.options, options);
-
 	var xAxis = d3.svg.axis().scale(exo.scaleX[opt.xScale]).ticks(10);//.tickSize(-exo.height).tickSubdivide(true)
 	var yAxis = d3.svg.axis().scale(exo.scaleY[opt.yScale]).ticks(10).orient('left');
 
 	opt.stage.transition()
-			.duration(3000)
-			.attr("transform", "translate(" + exo.m.l + "," + exo.m.t + ")");
+			.duration(exo.duration)
+			.attr("transform", "translate(" + exo.m.l + "," + exo.m.t + ")scale(1)");
 
 			//instead of removing and reinstating, just update existing
 			opt.stage.select(".axis.x").remove();
 			opt.stage.append("g").transition()
-				.duration(3000)
+				.duration(exo.duration)
 				.attr("class", "axis x")
 				.attr("transform", "translate(0," + (exo.height-exo.m.b-exo.m.t) + ")")
 				.call(xAxis);
@@ -244,7 +251,7 @@ exo.graph = function(options) {
 			//instead of removing and reinstating, just update existing
 			opt.stage.select(".x.label").remove();
 			opt.stage.append("text").transition()
-				.duration(3000)
+				.duration(exo.duration)
 				.attr("class", "x label")
 				.attr("text-anchor", "end")
 				.attr("x", exo.width-exo.m.l-exo.m.r)
@@ -255,7 +262,7 @@ exo.graph = function(options) {
 			//instead of removing and reinstating, just update existing
 			opt.stage.select(".y.axis").remove();
 			opt.stage.append("g").transition()
-				.duration(3000)
+				.duration(exo.duration)
 				.attr("class", "axis y")
 				.call(yAxis);
 
@@ -263,7 +270,7 @@ exo.graph = function(options) {
 			//instead of removing and reinstating, just update existing
 			opt.stage.select(".y.label").remove();
 			opt.stage.append("text").transition()
-				.duration(3000)
+				.duration(exo.duration)
 				.attr("class", "y label")
 				.attr("text-anchor", "end")
 				.attr("y", 6)
@@ -274,7 +281,7 @@ exo.graph = function(options) {
 	opt.shapes.each(function(){
 		d3.select(this)
 			.transition()
-			.duration(3000)
+			.duration(exo.duration)
 			.attr("transform", "rotate(0)")
 			//.attr("transform", "translate(0,0)")
 		//	.attr("transform", "translate("+ (exo.width / 2)*-1 +"0,0)")
@@ -291,7 +298,7 @@ exo.addRing = function(stage, radius) {
 					//.attr("cx", 0)
 					//.attr("cy", 0)
 					.attr("r", function(d){
-						return exo.scaleX.axis(radius);
+						return exo.scaleXRadial.axis(radius);
 				});
 };
 
@@ -341,19 +348,31 @@ d3.select("#viz").append("svg:svg")
 
 
 d3.csv("data/planets2012_2.csv", function(data) {
+	//Process the data
+	data.forEach(function(d) {
+		d.period = parseFloat(d.period);
+		d.radius = parseFloat(d.radius);
+		d.axis = parseFloat(d.axis);
+		d.temp = parseFloat(d.temp);
+		d["angle"] = exo.randRange(-180,180);
+	});
 
 	//data dependent functions
 	exo.minTemp =  d3.min(data, function(d){ return Math.sqrt(Math.abs(d.temp));});
 	exo.maxTemp =  d3.max(data, function(d){ return Math.sqrt(d.temp);});
 
-
 	exo.scaleX = {
 		// take the max axis value and scale it to fit within the width of the screen
 		axis: d3.scale.linear()
 				.domain([0, d3.max(data, function(d){ return d.axis;})])
-				//.range([0,(exo.width-exo.m.l-exo.m.r)/2]);
-				//MAYBE DIVIDE THIS BY 4 or something programmatics
-				.range([0,exo.width])
+				.range([0,(exo.width-exo.m.l-exo.m.r)])
+	};
+
+	exo.scaleXRadial = {
+		// take the max axis value and scale it to fit within the width of the screen
+		axis: d3.scale.linear()
+				.domain([0, d3.max(data, function(d){ return d.axis;})])
+				.range([0,(exo.width-exo.m.l-exo.m.r)*3])
 	};
 
 
@@ -369,18 +388,11 @@ d3.csv("data/planets2012_2.csv", function(data) {
 	};
 
 	exo.scaleColor = d3.scale.linear()
-		.domain([exo.minTemp, exo.maxTemp])
-		.range([0,200]);
+		.domain([0, d3.max(data, function(d){ return d.temp;})])
+		.range([256,0]);
 
 
-	//Process the data
-	data.forEach(function(d) {
-		d.period = parseFloat(d.period);
-		d.radius = parseFloat(d.radius);
-		d.axis = parseFloat(d.axis);
-		d.temp = parseFloat(d.temp);
-		d["angle"] = exo.randRange(-180,180);
-	});
+
 
 	//create and translate the initial group
 	var planetStage = d3.select(".planetStage").attr("transform", "translate(" + exo.width / 2 + "," + exo.height / 2 + ")");
@@ -393,14 +405,14 @@ d3.csv("data/planets2012_2.csv", function(data) {
 		koi: "sun",
 		period: 10,
 		radius: 3,
-		axis: .2,
+		axis: 0,
 		temp: 254
 	};
 	data.push(sunData);
 
 	//EARTH
 	var earthData = {
-		angle: exo.randRange(-180,180),		
+		angle: exo.randRange(-180,180),
 		koi: "earth",
 		period: 365,
 		radius: 1,
@@ -440,16 +452,6 @@ d3.csv("data/planets2012_2.csv", function(data) {
 					.attr("class", "planet")
 						.each(exo.createPlanets);
 
-
-
-/*var newLine =  d3.svg.line()
-					    .interpolate("basis")
-					    .x(function(d, i) { return x(i); })
-					    .y(function(d, i) { return y(d); });
-				labelGroup.append("path")
-				    .attr("class", "line")
-				    .attr("d", function(d) { return newLine(d) + "Z"; });
-*/
 
 
 
