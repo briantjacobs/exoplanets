@@ -105,6 +105,16 @@ text {fill: white;}
     bottom:0;
     position:absolute;
 }
+
+#list {
+  width: 200px;
+  right: 0;
+  bottom: 0;
+  top: 600px;
+  z-index: 10;
+  position: absolute;
+  color: white;overflow:auto;
+}
 .controls {position:absolute; top:5px; left:5px; z-index: 2}
 .controls button {display: inline-block;}
 
@@ -144,8 +154,13 @@ path.area {
 .rings circle {
     fill:none;
     stroke: white;
+    stroke-width: 3px;
+}
 
-  stroke-width: 3px;
+.labelGroup circle {
+    fill:none;
+    stroke: white;
+    stroke-width: 3px;
 }
 
 .x.axis .minor {

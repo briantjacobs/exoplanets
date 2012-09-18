@@ -77,21 +77,32 @@ exo.randRange = function(min,max) {
 };
 
 
+exo.createFill = function() {
+	return function() {
+		d3.select(this)
+			.attr("fill", function(d) {
+					//how to handle the negative values
+				if (d.temp > 0 && d.temp) {
+					return d3.hsl("hsl("+exo.scaleColor(d.temp)+",100%, 55%)");
+				}
+				else if (d.temp <= 0 || !d.temp) {
+					return d3.hsl("hsl(200,100%,100%)");
+				}
+		});
+	};
+}
+
 exo.createPlanets = function() {
 	d3.select(this)
 			.attr("r", function(d){
-				//this is not scaled or bounded
-				return d.radius*exo.ER;
-			})
-			.attr("fill", function(d) {
-				//how to handle the negative values
-				if (d.temp > 0) {
-					return d3.hsl("hsl("+exo.scaleColor(d.temp)+",100%, 55%)");
+				if (d.radius > 0) {
+					return d.radius*exo.ER;
 				}
 				else {
-					return d3.hsl("hsl(200,100%, 100%");
+					return 2;
 				}
-			});
+			})
+			.each(exo.createFill());
 };
 
 exo.radial = function(shapes, stage) {
@@ -121,11 +132,25 @@ exo.radial = function(shapes, stage) {
 		g.select(".planetGroup").transition().duration(exo.duration)
 			.attr("transform", function(d) {
 				return "translate("+exo.scaleXRadial.axis(d.axis)+",0)";
-			});
+			})
+	//		.each("end", function(d) {
+				//need to interpolate between 0 and the angle
+				g.transition().ease("sin", 1,0).duration(exo.duration)
+				.attrTween("transform", function(d) {
+				return d3.interpolateString(
+					"rotate("+ 0 +")",
+					"rotate(" + g.datum().angle + ")"
+				);
+			})
+				.each("end", exo.createOrbits(g.datum().angle));
+		//	});
 		//this feels hackish
 		//rotate the group
-		g.transition().duration(exo.duration)
-			.each(exo.createOrbits(g.datum().angle));
+
+		//restore this rather than the whole initial transition for explosion
+		//this should be the only thing when starting the app
+		/*g.transition().duration(exo.duration)
+			.each(exo.createOrbits(g.datum().angle));*/
 
 
 // how too store rotation data for when adding future text objects?
@@ -242,10 +267,12 @@ exo.graph = function(options) {
 
 			//instead of removing and reinstating, just update existing
 			opt.stage.select(".axis.x").remove();
-			opt.stage.append("g").transition()
-				.duration(exo.duration)
-				.attr("class", "axis x")
+			opt.stage.append("g")
 				.attr("transform", "translate(0," + (exo.height-exo.m.b-exo.m.t) + ")")
+				.transition()
+					.duration(exo.duration)
+					.attr("class", "axis x")
+
 				.call(xAxis);
 
 			//instead of removing and reinstating, just update existing
@@ -285,6 +312,9 @@ exo.graph = function(options) {
 			.attr("transform", "rotate(0)")
 			//.attr("transform", "translate(0,0)")
 		//	.attr("transform", "translate("+ (exo.width / 2)*-1 +"0,0)")
+		.select('.planetGroup')
+			.transition()
+			.duration(exo.duration)
 			.attr("transform", function(d) {
 				return "translate("+exo.scaleX[opt.xScale](d[opt.xScale])+","+exo.scaleY[opt.yScale](d[opt.yScale])+")";
 			});
@@ -306,7 +336,7 @@ exo.createLabelGroup = function(coords, selection) {
 
 		//YOU ARE IN THE MIDDLE OF TRYING TO BIND THE STRIPPED ROTATION VALUE OF THE PARENT TO TEH GROUP INSIDE TO STABILIZE IT
 
-		selection = d3.select(selection).select('.planetGroup')
+		selection = selection.select('.planetGroup')
 		//var offset = d3.mouse(selection);
 		//console.log(coords[0], offset[0], coords[1] , offset[1],(Math.atan2(coords[0] + offset[0], coords[1] - offset[1]) * (180/Math.PI)))
 		
@@ -321,13 +351,25 @@ exo.createLabelGroup = function(coords, selection) {
 
 		var labelGroup = selection.append("g").attr("class", "labelGroup");
 			labelGroup.append("text")
-				.attr("x", 33)
+				.attr("x", function(d){
+					return (d.radius*exo.ER)+36;
+				})
 				.text(function(d){
 					return d.koi;
 				});
-			labelGroup.append("svg:line")
-				.attr("x1", 0)
-				.attr("x2", 30)
+			labelGroup.append("circle")
+				.attr("r", function(d){
+					//this is not scaled or bounded
+					return (d.radius*exo.ER)+10;
+				});
+
+			var line = labelGroup.append("svg:line")
+				.attr("x1", function(d){
+					return (d.radius*exo.ER)+10;
+				})
+				.attr("x2", function(d){
+					return (d.radius*exo.ER)+30;
+				})
 				.attr("y1", 0)
 				.attr("y2", 0);
 			labelGroup.each(exo.reverseOrbit(360-coords));
@@ -337,6 +379,50 @@ exo.removeLabelGroup = function(selection) {
 	selection.select(".labelGroup").remove();
 };
 
+exo.sun = {
+		angle: exo.randRange(-360,0),
+		koi: "Sun",
+		period: 10,
+		radius: 3,
+		axis: 0,
+		temp: 254
+	},
+
+exo.solarSystem = [
+	{
+		angle: exo.randRange(-360,0),
+		koi: "Earth",
+		period: 365,
+		radius: 10,
+		axis: exo.AU,
+		temp: 254
+	},
+	{
+		angle: exo.randRange(-360,0),
+		koi: "Mercury",
+		period: 87.969,
+		radius: 10,
+		axis: 0.387,
+		temp: 434
+	},
+	{
+		angle: exo.randRange(-360,0),
+		koi: "Jupiter",
+		period: 4331,
+		radius: 11.209,
+		axis: 5.2,
+		temp: 124
+	}
+];
+
+
+exo.returnRadius = function(r) {
+	//objects without radiii should be a different shape
+	if (r && r>0) {
+		return parseFloat(r);
+	}
+	else {return 1;}
+};
 
 $(function(){
 //exo.getPlanets()
@@ -347,16 +433,27 @@ d3.select("#viz").append("svg:svg")
 	.append("g").attr("class", "planetStage");
 
 
+/*
 d3.csv("data/planets2012_2.csv", function(data) {
-	//Process the data
+	//Process 2012 kepler set
 	data.forEach(function(d) {
 		d.period = parseFloat(d.period);
 		d.radius = parseFloat(d.radius);
 		d.axis = parseFloat(d.axis);
 		d.temp = parseFloat(d.temp);
-		d["angle"] = exo.randRange(-180,180);
+		d["angle"] = exo.randRange(-360,0);
 	});
-
+/**/
+d3.csv("data/exoplanetdb.csv", function(data) {
+	data.forEach(function(d) {
+		d.koi = d.NAME;
+		d.period = parseFloat(d.PER);
+		d.radius = exo.returnRadius(d.R)
+		d.axis = parseFloat(d.A);
+		d.temp = parseFloat(d.TEFF);
+		d["angle"] = exo.randRange(-360,0);
+	});
+/**/
 	//data dependent functions
 	exo.minTemp =  d3.min(data, function(d){ return Math.sqrt(Math.abs(d.temp));});
 	exo.maxTemp =  d3.max(data, function(d){ return Math.sqrt(d.temp);});
@@ -372,7 +469,7 @@ d3.csv("data/planets2012_2.csv", function(data) {
 		// take the max axis value and scale it to fit within the width of the screen
 		axis: d3.scale.linear()
 				.domain([0, d3.max(data, function(d){ return d.axis;})])
-				.range([0,(exo.width-exo.m.l-exo.m.r)*3])
+				.range([0,(exo.width-exo.m.l-exo.m.r)*50])
 	};
 
 
@@ -384,6 +481,10 @@ d3.csv("data/planets2012_2.csv", function(data) {
 		temp:  d3.scale.linear()
 					//inverted y scale: bigger = up
 					.domain([0, d3.max(data, function(d){ return d.temp;}) ])
+					.range([exo.height-exo.m.b-exo.m.t, 0]),
+		period:  d3.scale.linear()
+					//inverted y scale: bigger = up
+					.domain([0, d3.max(data, function(d){ return d.period;}) ])
 					.range([exo.height-exo.m.b-exo.m.t, 0])
 	};
 
@@ -396,31 +497,33 @@ d3.csv("data/planets2012_2.csv", function(data) {
 
 	//create and translate the initial group
 	var planetStage = d3.select(".planetStage").attr("transform", "translate(" + exo.width / 2 + "," + exo.height / 2 + ")");
-
+	var list = d3.select("#list").append("ul");
+	
 	//Add our solar system and underlying rings
+	data.push(exo.sun);
+	for(i=0;i<exo.solarSystem.length; i++) {
+			data.push(exo.solarSystem[i]);
+			exo.addRing(planetStage, exo.solarSystem[i].axis);
+	}
 
-	//SUN
-	var sunData = {
-		angle: exo.randRange(-180,180),
-		koi: "sun",
-		period: 10,
-		radius: 3,
-		axis: 0,
-		temp: 254
-	};
-	data.push(sunData);
 
-	//EARTH
-	var earthData = {
-		angle: exo.randRange(-180,180),
-		koi: "earth",
-		period: 365,
-		radius: 1,
-		axis: exo.AU,
-		temp: 254
-	};
-	data.push(earthData);
-	exo.addRing(planetStage, earthData.axis);
+
+//add list of names 
+	var names = list.selectAll('.listItem')
+		.data(data)
+		.enter()
+		.append('li')
+		.attr("data-index",function(d,i){
+			return "index-"+i;
+		})		
+		.attr("class",function(d,i){
+			return "item index-"+i;
+		})
+		.text(function(d){
+			return d.koi;
+		});
+
+
 
 
 	//add the planets
@@ -428,7 +531,10 @@ d3.csv("data/planets2012_2.csv", function(data) {
 					.data(data)
 					.enter()
 					.append("g")
-					.attr("class","item");
+					.attr("class",function(d,i){
+						return "item index-"+i;
+					})
+					.attr("index", function(d, i) { return "index-" + i; });
 
 
 	var planetObj = planets.append("g")
@@ -442,7 +548,7 @@ d3.csv("data/planets2012_2.csv", function(data) {
 				rotation = rotation.split("rotate(");
 				rotation = parseFloat(rotation[1]);
 			//exo.createLabelGroup([d3.event.x-(exo.width/2), d3.event.y-(exo.height/2)], this);
-			exo.createLabelGroup(rotation, this);
+			exo.createLabelGroup(rotation, d3.select(this));
 				});
 		planetObj.on("mouseout", function(d){
 			exo.removeLabelGroup(d3.select(this));
@@ -453,14 +559,31 @@ d3.csv("data/planets2012_2.csv", function(data) {
 						.each(exo.createPlanets);
 
 
+		names.on("mouseover", function(d) {
+			var currClass = d3.select(this).attr("data-index");
+			var obj = planetStage.select("."+currClass)
 
+				var rotation = obj.attr('transform');
+			//this is a weird hack
+				rotation = rotation.split("rotate(");
+				rotation = parseFloat(rotation[1]);
+							console.log(rotation,obj)
+			exo.createLabelGroup(rotation, obj);
+			//console.log($("."+currClass))
+		});
 
+		names.on("mouseout", function(d) {
+			var currClass = d3.select(this).attr("data-index");
+			var obj = planetStage.select("."+currClass)
+				exo.removeLabelGroup(obj);
+		});		
 
 
 
 	$('#radial').click(function(){
 			exo.radial(planets, planetStage);
 	});
+
 	$('#graph1').click(function(){
 			exo.graph({
 				stage: planetStage,
@@ -482,6 +605,17 @@ d3.csv("data/planets2012_2.csv", function(data) {
 				yLabel: "Planet Size"
 			});
 	});
+
+	$('#graph3').click(function(){
+			exo.graph({
+				stage: planetStage,
+				shapes: planets,
+				xScale: "axis",
+				xLabel: "Earth Distance",
+				yScale: "period",
+				yLabel: "Period"
+			});
+	});	
 
 });
 
