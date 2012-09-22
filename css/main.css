@@ -95,7 +95,10 @@ textarea {
    Author's custom styles
    ========================================================================== */
 
-body {background: #000; width: 100%; height: 100%;}
+body {background: #000; width: 100%; height: 100%; overflow:hidden;}
+
+.btn-toolbar * {visibility: hidden;}
+.btn-toolbar:hover * {visibility:visible;}
 
 text {fill: white;}
 
@@ -115,8 +118,8 @@ text {fill: white;}
   position: absolute;
   color: white;overflow:auto;
 }
-.controls {position:absolute; top:5px; left:5px; z-index: 2}
-.controls button {display: inline-block;}
+.controls {position:absolute;  bottom:5px; left:5px; z-index: 2}
+.controls button {display: inline-block;font-size: 12px !important;}
 
 
 body {
@@ -141,8 +144,9 @@ path.area {
 .axis path,
 .axis line  {
     fill: none;
-    stroke: white;
+    stroke: rgba(255,255,255,.8);
     shape-rendering: crispEdges;
+    stroke-width: 1.2px;
 }
 
 .axis text {
@@ -153,14 +157,15 @@ path.area {
 
 .rings circle {
     fill:none;
-    stroke: white;
+    stroke: rgba(255,255,255, .5);
     stroke-width: 1.5px;
 }
 
+.labelGroup {font-size:12px;}
 .labelGroup circle {
     fill:none;
-    stroke: white;
-    stroke-width: 3px;
+    stroke: rgba(255,255,255,.5);
+    stroke-width: 2px;
 }
 
 .x.axis .minor {
@@ -171,6 +176,6 @@ path.area {
 
 .planetStage > circle {fill: white;}
 
-.planet {stroke: rgba(0,0,0,.3); stroke-width:.25px;}
+.planet {stroke: rgba(0,0,0,.5); stroke-width:.25px;}
 
 

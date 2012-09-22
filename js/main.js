@@ -42,7 +42,10 @@ exo.data = [];
 exo.dat = exo.dat || {};
 
 exo.dat = {
-	"Amount": .5
+	"Size":1,
+	"Scale":1,
+	"Rotation":1
+
 }
 exo.duration = 4000;
 exo.rDuration = 360000; // 360 seconds for teh earth to rotate around the sun
@@ -57,11 +60,13 @@ exo.renderWidth = function() {
 }
 
 
+exo.plotRadial = true;
+
 // Conversion constants
 exo.deg = 0;
 exo.PER = 365.2; //days
 exo.ER = 1;           // Earth Radius, in pixels
-exo.SR = exo.ER*5; //sun is 110 the earth
+exo.SR = 2; //sun is 110 the earth
 //radius of earth 1/4 of the screen
 exo.AU = 1; //$('#viz').width()/4;        // Astronomical Unit, in pixels
 exo.YEAR = 15000;     // One year, in frames
@@ -108,6 +113,16 @@ exo.sun = {
 	},
 
 exo.solarSystem = [
+	{
+		name: "Sun",
+		period: 0,
+		radius: exo.SR,
+		axis: 0,
+		temp: 737.15,
+		//temp: 5778,
+		type: "local",
+		angle: exo.randRange(-360,0)
+	},
 	{
 		name: "Mercury",
 		radius: 0.383,
@@ -216,20 +231,29 @@ exo.scaleRadial = function() {
 		});			
 }
 
+
+exo.scaleSun = function() {
+		return this.transition().duration(exo.duration)
+			//translate the elements
+				.attr("r", function(d) {
+					return exo.scaleXRadial.radiusSun()(d.radius);
+		});
+			};
+
 exo.scaleRings = function() {
 		return this.transition().duration(exo.duration)
 			//translate the elements
 				.attr("r", function(d) {
 					return exo.scaleXRadial.axis()(d.axis);
 		});
-			}
+			};
 
 exo.radial = function() {
 return function() {
 // if we are expanding from nothing, don't transition the rotation (for explosion)
 // if we are  transitioning from another viz, transition the rotation (for smooth folding)
 // if we are iterating, transition the rotation but dont translate
-
+	exo.plotRadial = true;
 	// hide the axes
 	d3.selectAll(".rings").transition().duration(1000).style("opacity",1);
 
@@ -247,6 +271,7 @@ return function() {
 	//scale the planets
 	exo.planets.call(exo.scaleRadial);
 	exo.rings.call(exo.scaleRings);
+	d3.select('.Sun').select("circle").call(exo.scaleSun);
 
 	exo.planets.each(function(){
 		var g = d3.select(this);
@@ -358,6 +383,11 @@ exo.reverseOrbit = function(angle) {
 	};
 };
 
+exo.stopOrbit = function() {
+	return function() {
+		this.select('.labelGroup').transition().attr("transform","rotate(0)");
+	};
+}
 
 
 exo.graph = function(options) {
@@ -369,6 +399,8 @@ exo.graph = function(options) {
 	// get sizing right transitioning from radial to graph modes.
 	// get the width settings right
 	// add planetlabeling that stays horizontal even within rotation
+
+	exo.plotRadial = false;
 
 	this.options = {
 		xScale: '',
@@ -452,7 +484,7 @@ exo.addRing = function(radius) {
 					.attr("r", function(d){
 						return exo.scaleXRadial.axis()(radius);
 				});
-}
+};
 };
 
 exo.createLabelGroup = function() {
@@ -499,7 +531,11 @@ exo.createLabelGroup = function() {
 				})
 				.attr("y1", 0)
 				.attr("y2", 0);
-			labelGroup.each(exo.reverseOrbit(360-rotation));
+			if (exo.plotRadial) {
+				labelGroup.each(exo.reverseOrbit(360-rotation));
+			} else {
+				labelGroup.call(exo.stopOrbit);
+			}
 	};
 };
 
@@ -529,7 +565,7 @@ exo.calcPlanetTemp = function(tStar, rStar, axis) {
 	var rStar = rStar*7; // 7:150 is the ratio of the sun's radius to the earths semi-major axis
 	var axis = axis*150
 	//return (tStar*Math.pow(rStar/(2*axis),0.5))*Math.pow(fFactor*(1-albedo), 0.25);
-	//return tStar(Math.pow(rStar/(2*axis),1/2))*Math.pow(fFactor*(1-albedo), 1/4);
+	//return tStar*(Math.pow(rStar/(2*axis),1/2))*Math.pow(fFactor*(1-albedo), 1/4);
 	//http://en.wikipedia.org/wiki/Black-body_radiation#Temperature_relation_between_a_planet_and_its_star
 	return tStar*Math.pow((rStar*Math.pow((1-albedo)/.7),0.5)/(2*axis),0.5);
 		} else {
@@ -580,6 +616,11 @@ exo.scaleXRadial = {
 		return d3.scale.linear()
 			.domain([0, d3.max(exo.data, function(d){ return d.axis;})])
 			.range([0,((exo.width-exo.m.l-exo.m.r)/2)]);
+		},
+	radiusSun: function() {
+		return d3.scale.linear()
+			.domain([0, d3.max(exo.data, function(d){ return d.radius;})])
+			.range([0,((exo.width-exo.m.l-exo.m.r)/650)]);
 		}
 };
 
@@ -768,6 +809,7 @@ d3.csv("data/exoplanet.eu_catalog.csv", function(data) {
 		d["angle"] = exo.randRange(-360,0);
 	});
 */
+/*
 d3.csv("data/exoplanetdb.csv", function(data) {
 
 	 data.forEach(function(d) {
@@ -781,6 +823,23 @@ d3.csv("data/exoplanetdb.csv", function(data) {
 		d.temp = exo.calcPlanetTemp(d.tStar,d.rStar,d.axis);
 		d["angle"] = exo.randRange(-360,0);
 	});
+	 */
+d3.csv("data/NasaExoplanetArchive.csv", function(data) {
+console.log(data)
+	 data.forEach(function(d) {
+		d.name = d.pl_hostname + ' ' + d.pl_letter;
+		d.period = parseFloat(d.pl_orbper);
+		d.radius = exo.returnRadius(d.pl_rade);
+		d.axis = parseFloat(d.pl_orbsmax);
+		d.rStar = parseFloat(d.st_rad);
+		d.tStar = parseFloat(d.st_teff);
+		d.type = d.pl_discmethod;
+		d.temp = exo.calcPlanetTemp(d.tStar,d.rStar,d.axis);
+		d["angle"] = exo.randRange(-360,0);
+	});
+console.log(data)
+
+
 
 	 //structure the data by detection type
 	/*var nestedData = d3.nest()
@@ -823,7 +882,8 @@ d3.csv("data/exoplanetdb.csv", function(data) {
 
 	$('#all').click(function(){
 		exo.rDuration = 360000;
-		exo.data = exo.dataSet;
+		//exo.data = exo.dataSet;
+		exo.data = exo.dataSet.filter(function(d) { return d.type != "Imaging";} );
 
 		$('#graph-type').find('.active').click();
 
@@ -836,7 +896,7 @@ d3.csv("data/exoplanetdb.csv", function(data) {
 	});
 	$('#rv').click(function(){
 		exo.rDuration = 360000;		
-		exo.data = exo.dataSet.filter(function(d) { return d.type == "RV" || d.type == "local";} );
+		exo.data = exo.dataSet.filter(function(d) { return d.type == "Radial Velocity" || d.type == "local";} );
 		
 //remove this 
 		if ($('.radial').hasClass('active')) {
@@ -958,7 +1018,7 @@ d3.csv("data/exoplanetdb.csv", function(data) {
 	
 	$('#solarLabels').toggle(
 		function(){
-			exo.planets.filter(function(d) { return d.type == "local"}).each(exo.createLabelGroup());
+			exo.planets.filter(function(d) { return d.type == "local" && d.name != "Sun"}).each(exo.createLabelGroup());
 		},
 		function(){
 			exo.planets.filter(function(d) { return d.type == "local"}).each(exo.removeLabelGroup());
@@ -1031,15 +1091,15 @@ viz.append("svg:rect")
 
 // DAT gui controls
 var gui = new dat.GUI();
-var amountChanger = gui.add(exo.dat,"Amount", 1, 100);
-var scaleChanger = gui.add(exo.dat,"Amount", $(window).width(),500000);
-var rotationChanger = gui.add(exo.dat,"Amount", 30000,100000);
+var amountChanger = gui.add(exo.dat,"Size", -100, 100);
+var scaleChanger = gui.add(exo.dat,"Scale", $(window).width()/2,500000);
+var rotationChanger = gui.add(exo.dat,"Rotation", 15000,1000000);
 
 amountChanger.onChange(function(value) {
   d3.selectAll(".planet")
 		.attr("r", function(d){
 			//this is not scaled or bounded
-			return d.radius*value*.01;
+			return (d.radius*exo.ER)+value;
 		});
 });
 
@@ -1057,11 +1117,9 @@ exo.planets.call(exo.scaleRadial);
 
 
 rotationChanger.onChange(function(value) {
-	exo.YEAR = 50000;
-		viz.selectAll(".planet").each(exo.randomOrbit())
-	// how to change speed of rotation
-	// prevent the animation from reinterpolating only every rotatation
-	// reinterpolate every frame so the new year can be detected?
+	exo.rDuration = value;
+		exo.planetStage.call(exo.renderPlanets());
+		exo.planetStage.call(exo.radial());
 });
 
 
