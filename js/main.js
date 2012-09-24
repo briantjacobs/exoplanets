@@ -209,27 +209,39 @@ exo.solarSystem = [
 
 exo.createFill = function() {
 	return function() {
-		d3.select(this)
-			.attr("fill", function(d) {
-					//how to handle the negative values
+		var color = function(d) {
 				if (d.temp > 0 && d.temp) {
 					return d3.hsl("hsl("+exo.scaleColor()(d.temp)+",100%, 55%)");
 				}
 				else if (d.temp <= 0 || !d.temp) {
 					return d3.hsl("hsl(200,100%,100%)");
 				}
-		});
+		};
+		d3.select(this)
+			.attr("fill", function(d) {
+				return color(d);
+			})
+			.attr("stroke", function(d) {
+				return color(d);
+			});
 	};
 }
 
 
 exo.scaleRadial = function() {
-		return this.select(".planetGroup").transition().duration(exo.duration)
+		return this.select(".planetGroup")
+			.transition().duration(exo.duration)
 			//translate the elements
 				.attr("transform", function(d) {
 					return "translate("+exo.scaleXRadial.axis()(d.axis)+",0)";
-		});			
-}
+				})
+				/*.each("end", function(d,i) {
+					//end event
+					if (i===0) {
+						
+					}
+				});*/
+};
 
 
 exo.scaleSun = function() {
@@ -245,7 +257,7 @@ exo.scaleRings = function() {
 			//translate the elements
 				.attr("r", function(d) {
 					return exo.scaleXRadial.axis()(d.axis);
-		});
+		})
 			};
 
 exo.radial = function() {
@@ -253,7 +265,7 @@ return function() {
 // if we are expanding from nothing, don't transition the rotation (for explosion)
 // if we are  transitioning from another viz, transition the rotation (for smooth folding)
 // if we are iterating, transition the rotation but dont translate
-	exo.plotRadial = true;
+
 	// hide the axes
 	d3.selectAll(".rings").transition().duration(1000).style("opacity",1);
 
@@ -270,36 +282,42 @@ return function() {
 
 	//scale the planets
 	exo.planets.call(exo.scaleRadial);
+
 	exo.rings.call(exo.scaleRings);
 	d3.select('.Sun').select("circle").call(exo.scaleSun);
 
 	exo.planets.each(function(){
 		var g = d3.select(this);
-		//this will fold out circularly
-		//translate the circle
-	//		.each("end", function(d) {
-				//need to interpolate between 0 and the angle
-		//rotate the circles		
-		g.transition()//.ease("sin", 1,0)
-			.duration(4000)
-			.ease("linear")
-			.attrTween("transform", function(d) {
-			return d3.interpolateString(
-				"rotate("+ 0 +")",
-				"rotate(" + g.datum().angle + ")"
-			);
-		})
-				.each("end", exo.createOrbits(g.datum().angle));
+
+		if (!exo.plotRadial) {
+			//this will fold out radially
+			g.transition()//.ease("sin", 1,0)
+				.duration(4000)
+				.ease("linear")
+				.attrTween("transform", function(d) {
+				return d3.interpolateString(
+					"rotate("+ 0 +")",
+					"rotate(" + g.datum().angle + ")"
+				);
+			})
+					.each("end", exo.createOrbits(g.datum().angle));
 		//	});
+		} else {
+			//this will explode out
+			g.transition().duration(exo.duration)
+				.each(exo.createOrbits(g.datum().angle));
+		}
 
+	});
 
-		//this feels hackish
-		//rotate the group
+	exo.plotRadial = true;
+
+};
+};
 
 		//restore this rather than the whole initial transition for explosion
 		//this should be the only thing when starting the app
-		/*g.transition().duration(exo.duration)
-			.each(exo.createOrbits(g.datum().angle));*/
+
 
 
 // how too store rotation data for when adding future text objects?
@@ -326,10 +344,8 @@ return function() {
 			});
 		*/
 
-	});
 
-}
-};
+
 
 
 
@@ -460,6 +476,7 @@ exo.graph = function(options) {
 
 	exo.planets.each(function(){
 		d3.select(this)
+			//.attr("transform", "translate(0," + (exo.height-exo.m.b-exo.m.t) + ")")
 			.transition()
 			.duration(exo.duration)
 			.attr("transform", "rotate(0)")
@@ -490,10 +507,7 @@ exo.addRing = function(radius) {
 exo.createLabelGroup = function() {
  return function() {
 		//YOU ARE IN THE MIDDLE OF TRYING TO BIND THE STRIPPED ROTATION VALUE OF THE PARENT TO TEH GROUP INSIDE TO STABILIZE IT
-		var rotation = d3.select(this).attr('transform');
-		//this is a weird hack
-			rotation = rotation.split("rotate(");
-			rotation = parseFloat(rotation[1]);
+
 
 		var selection = d3.select(this).select('.planetGroup');
 		//var offset = d3.mouse(selection);
@@ -507,12 +521,21 @@ exo.createLabelGroup = function() {
 			.attr('cx',coords[0] - offset[0])
 			.attr('cy',coords[1] - offset[1])
 			.attr('r', 3);*/
+			
+			/*labelGroup
+				.style("opacity", 1e-6)
+				.transition()
+				.duration(exo.duration)
+				.style("opacity", 1);
+*/
 
 		var labelGroup = selection.append("g").attr("class", "labelGroup");
+
 			labelGroup.append("text")
 				.attr("x", function(d){
 					return (d.radius*exo.ER)+36;
 				})
+				.attr("y", 4)
 				.text(function(d){
 					return d.name;
 				});
@@ -531,11 +554,17 @@ exo.createLabelGroup = function() {
 				})
 				.attr("y1", 0)
 				.attr("y2", 0);
+
 			if (exo.plotRadial) {
+				var rotation = d3.select(this).attr('transform');
+				//this is a weird hack
+				rotation = rotation.split("rotate(");
+				rotation = parseFloat(rotation[1]);
 				labelGroup.each(exo.reverseOrbit(360-rotation));
 			} else {
 				labelGroup.call(exo.stopOrbit);
 			}
+
 	};
 };
 
@@ -605,9 +634,15 @@ exo.scaleX = {
 	// take the max axis value and scale it to fit within the width of the screen
 	axis: function() {
 		return d3.scale.linear()
-			.domain([0, d3.max(exo.data, function(d){ return d.axis;})])
+		//this filter takes out the solar system planets
+		//THIS IS NOT EFFICIENT
+			.domain([0, d3.max(exo.data.filter(function(d) { return d.type != "local";} ), function(d){ return d.axis;})])
 			.range([0,(exo.width-exo.m.l-exo.m.r)]);
 		}
+		/*return d3.scale.log()
+			.domain([d3.min(exo.data, function(d){ return d.axis;}), d3.max(exo.data, function(d){ return d.axis;})])
+			.range([0,(exo.width-exo.m.l-exo.m.r)]);
+		}*/
 };
 
 exo.scaleXRadial = {
@@ -629,19 +664,19 @@ exo.scaleY = {
 	radius : function() {
 		return d3.scale.linear()
 				//inverted y scale: bigger = up
-				.domain([0, d3.max(exo.data, function(d){ return d.radius;}) ])
+				.domain([0, d3.max(exo.data.filter(function(d) { return d.type != "local";} ), function(d){ return d.radius;}) ])
 				.range([exo.height-exo.m.b-exo.m.t, 0]);
 			},
 	temp:  function() {
 		return d3.scale.linear()
 				//inverted y scale: bigger = up
-				.domain([0, d3.max(exo.data, function(d){ return d.temp;}) ])
+				.domain([0, d3.max(exo.data.filter(function(d) { return d.type != "local";} ), function(d){ return d.temp;}) ])
 				.range([exo.height-exo.m.b-exo.m.t, 0]);
 			},
 	period:  function() {
 		return d3.scale.linear()
 				//inverted y scale: bigger = up
-				.domain([0, d3.max(exo.data, function(d){ return d.period;}) ])
+				.domain([0, d3.max(exo.data.filter(function(d) { return d.type != "local";} ), function(d){ return d.period;}) ])
 				.range([exo.height-exo.m.b-exo.m.t, 0]);
 			}
 };
@@ -656,6 +691,7 @@ exo.scaleColor = function() {
 
 exo.renderPlanets = function() {	// join planet objects with initial (empty) data
 return function() {
+
 	exo.planets = exo.planetStage.selectAll(".item")
 			.data(exo.data, function(d) { return d.name; });
 			
@@ -672,16 +708,24 @@ return function() {
 				})
 
 			.append("circle")
-					.attr("class", "planet")
+					.each(exo.createFill())
+					.attr("class", function(d){
+						if (d.radius > 0) {
+							return "planet";
+						} else {
+							return "planet-no-radius";
+						}
+					})
 					.attr("r", function(d){
 						if (d.radius > 0) {
 							return d.radius*exo.ER;
 						}
 						else {
+							d.radius = 2;
 							return 2;
 						}
-					})
-					.each(exo.createFill());
+					});
+
 
 	exo.planets.exit().remove();
 
@@ -732,15 +776,13 @@ exo.centerRadialStage = function() {
 
 
 exo.scaleScale = function() {
-		var newData = exo.data.filter(function(d) { return d.type != "local";});
-		var newDataMax = d3.max(newData,function(d){ return d.axis;});
-
+		var newData = exo.data.filter(function(d) { return d.type != "local";} );
+		var filteredMax = d3.max(newData,function(d){ return d.axis;});
 		var newWidth = d3.scale.linear()
-			.domain([0, newDataMax])
-			.range([0,(exo.width-exo.m.l-exo.m.r)]);
+			.domain([0, filteredMax])
+			.range([0,($(window).width())]);
 		//scale the entire dataset within the range of the new set
-		return newWidth(d3.max(exo.data, function(d){ return d.axis;}));
-		//exo.width = width;
+		return newWidth(d3.max(exo.dataSet, function(d){ return d.axis;}));
 };
 
 $(function(){
@@ -825,11 +867,10 @@ d3.csv("data/exoplanetdb.csv", function(data) {
 	});
 	 */
 d3.csv("data/NasaExoplanetArchive.csv", function(data) {
-console.log(data)
-	 data.forEach(function(d) {
+	data.forEach(function(d) {
 		d.name = d.pl_hostname + ' ' + d.pl_letter;
 		d.period = parseFloat(d.pl_orbper);
-		d.radius = exo.returnRadius(d.pl_rade);
+		d.radius = parseFloat(d.pl_rade);
 		d.axis = parseFloat(d.pl_orbsmax);
 		d.rStar = parseFloat(d.st_rad);
 		d.tStar = parseFloat(d.st_teff);
@@ -837,147 +878,61 @@ console.log(data)
 		d.temp = exo.calcPlanetTemp(d.tStar,d.rStar,d.axis);
 		d["angle"] = exo.randRange(-360,0);
 	});
-console.log(data)
 
-
-
-	 //structure the data by detection type
-	/*var nestedData = d3.nest()
-		.key(function(d) {return d.type.toLowerCase();})
-		.entries(data)*/
 
 	// merge the solar system data with the returned dataset
 	exo.dataSet = exo.solarSystem.concat(data);
 
-	//exo.planets.call(exo.scaleRadial)
-
-	//EVENTS DEPEND ON EXTERNAL DATASET LOADING
-
-
-
-
+	//launch initial parameters
 	$('#start').click(function(){
-		exo.rDuration = 60000;
+		exo.rDuration = 30000;
 		exo.data = exo.dataSet.filter(function(d) { return d.type == "local"; });//.concat(exo.data);
+	});
 
-		//exo.planets.filter(function(d) { return d.type == "local"}).each(exo.createLabelGroup());
-
+	$('#orbits').click(function(){
 		//exo.renderList();
-
 		exo.planetStage.call(exo.renderPlanets());
 		exo.planetStage.call(exo.radial());
-
-/*
-		var newWidth = d3.scale.linear()
-			.domain([0, d3.max(exo.data, function(d){ return d.axis;})])
-			.range([0,(exo.width-exo.m.l-exo.m.r)]);
-		//scale the entire dataset within the range of the new set
-		exo.width = newWidth(d3.max(exo.data, function(d){ return d.axis;}));
-		
-*/
-		$("#orbits").click();
-
-		
 	});
+
+	$("#start").click();
+	$("#orbits").click();
 
 	$('#all').click(function(){
 		exo.rDuration = 360000;
-		//exo.data = exo.dataSet;
 		exo.data = exo.dataSet.filter(function(d) { return d.type != "Imaging";} );
+		exo.width = exo.scaleScale();
 
 		$('#graph-type').find('.active').click();
 
-//remove this 
-		if ($('#orbits').hasClass('active')) {
-			exo.width = 6369
-		}
-
-
 	});
 	$('#rv').click(function(){
-		exo.rDuration = 360000;		
+		exo.rDuration = 360000;
 		exo.data = exo.dataSet.filter(function(d) { return d.type == "Radial Velocity" || d.type == "local";} );
-		
-//remove this 
-		if ($('.radial').hasClass('active')) {
-			exo.width = 36180
-		}
-
+		exo.width = exo.scaleScale();
+		exo.planets.filter(function(d) { return d.type == "local" && d.name != "Sun";});
+		//	.transition().duration(3000).delay(4000)
+		//	.each(exo.createLabelGroup());
 
 		$('#graph-type').find('.active').click();
 	});
 	$('#transit').click(function(){
-		exo.rDuration = 360000;		
+		exo.rDuration = 360000;
 		exo.data = exo.dataSet.filter(function(d) { return d.type == "Transit" || d.type == "local"; });
-
+		exo.width = exo.scaleScale();
 		$('#graph-type').find('.active').click();
 
-//remove this 
-		if ($('#orbits').hasClass('active')) {
-			exo.width = 198770
-		}
-
-
-	});
-
-	$('#orbits').click(function(){
-		//exo.data = exo.dataSet.filter(function(d) { return d.type == "RV" || d.type == "local"; });
-		//exo.rDuration = 360000;
-		//exo.renderList();
-
-		exo.planetStage.call(exo.renderPlanets());
-		exo.planetStage.call(exo.radial());
-	});
-/*
-		var newData = exo.dataSet.filter(function(d) { return d.type != "local";});
-		var newDataMax = d3.max(newData,function(d){ return d.axis;});
-
-		var newWidth = d3.scale.linear()
-			.domain([0, newDataMax])
-			.range([0,(exo.width-exo.m.l-exo.m.r)]);
-		//scale the entire dataset within the range of the new set
-		exo.width = newWidth(d3.max(exo.dataSet, function(d){ return d.axis;}));
-*/
-
-
-
-/*
-	$('#rv').click(function(){
-				exo.data = exo.data.filter(function(d) { return d.type != "local";} );
-				exo.planetStage.call(exo.renderPlanets());
-				exo.planetStage.call(exo.radial());
-			//exo.filterDiscoveryMethod(planets, 'RV');
 	});
 
 
-/*	$('#transit').click(function(){
-				exo.data = exo.data.filter(function(d) { return d.type != "local";} );
-				exo.planetStage.call(exo.renderPlanets());
-				exo.planetStage.call(exo.radial());
 
-*/
-/*
-		exo.data = confirmedData//.concat(exo.data);
-		
-		var dataMax = d3.max(confirmedData, function(d){ return d.axis;})
 
-		var newWidth = d3.scale.linear()
-			.domain([0, dataMax])
-			.range([0,(exo.width-exo.m.l-exo.m.r)]);
-		//scale the entire dataset within the range of the new set
-		exo.width = newWidth(d3.max(exo.data, function(d){ return d.axis;}));
-		//exo.planetStage = d3.select(".planetStage").call(exo.radialStage);
 
-		exo.planetStage.call(exo.renderPlanets());
-		exo.planetStage.call(exo.radial());
-		//exo.planets.call(exo.scaleRadial)
-		
-	}) */
 
 	$('#graph1').click(function(){
-			exo.width = $(window).width()
-			exo.data = exo.data.filter(function(d) { return d.type != "local";} );
-			exo.planetStage.call(exo.renderPlanets())
+			exo.width = $(window).width();
+			//exo.data = exo.data.filter(function(d) { return d.type != "local";} );
+			exo.planetStage.call(exo.renderPlanets());
 			exo.graph({
 				stage: exo.planetStage,
 				shapes: exo.planets,
@@ -989,9 +944,9 @@ console.log(data)
 	});
 
 	$('#graph2').click(function(){
-			exo.width = $(window).width()
-			exo.data = exo.data.filter(function(d) { return d.type != "local";} );
-			exo.planetStage.call(exo.renderPlanets())			
+			exo.width = $(window).width();
+			//exo.data = exo.data.filter(function(d) { return d.type != "local";} );
+			exo.planetStage.call(exo.renderPlanets());
 			exo.graph({
 				stage: exo.planetStage,
 				shapes: exo.planets,
@@ -1003,9 +958,9 @@ console.log(data)
 	});
 
 	$('#graph3').click(function(){
-			exo.width = $(window).width()
-			exo.data = exo.data.filter(function(d) { return d.type != "local";} );
-			exo.planetStage.call(exo.renderPlanets())			
+			exo.width = $(window).width();
+			//exo.data = exo.data.filter(function(d) { return d.type != "local";} );
+			exo.planetStage.call(exo.renderPlanets());
 			exo.graph({
 				stage: exo.planetStage,
 				shapes: exo.planets,
@@ -1014,18 +969,18 @@ console.log(data)
 				yScale: "period",
 				yLabel: "Period"
 			});
-	});	
+	});
 	
 	$('#solarLabels').toggle(
 		function(){
-			exo.planets.filter(function(d) { return d.type == "local" && d.name != "Sun"}).each(exo.createLabelGroup());
+			exo.planets.filter(function(d) { return d.type == "local" && d.name != "Sun";}).each(exo.createLabelGroup());
 		},
 		function(){
-			exo.planets.filter(function(d) { return d.type == "local"}).each(exo.removeLabelGroup());
+			exo.planets.filter(function(d) { return d.type == "local";}).each(exo.removeLabelGroup());
 		}
-	)
+	);
 
-	});
+});
 
 
 

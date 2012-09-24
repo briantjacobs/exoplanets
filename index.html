@@ -13,6 +13,8 @@
         <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
         <link rel="stylesheet" href="css/bootstrap.min.css">
         <!--<link rel="stylesheet" href="css/normalize.css">-->
+        <link href='http://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700|Open+Sans:400,600' rel='stylesheet' type='text/css'>
+
         <link rel="stylesheet" href="css/main.css">
         <script src="js/vendor/modernizr-2.6.1.min.js"></script>
 
@@ -22,18 +24,19 @@
         <div class="controls">
 
             <div class="btn-toolbar">
-              <button id="start" class="btn">Start</button>            
-              <button id="solarLabels" class="btn">Toggle Labels</button>  
-              <div class="btn-group" data-toggle="buttons-radio">
-                <button id="all" class="btn">All Exoplants</button>
-                 <button id="rv" class="btn">Filter Radial Velocity</button>
-                 <button id="transit" class="btn">Filter Transit</button>  
+             <!--  -->        
+             <!-- <button id="solarLabels" class="btn">Toggle Labels</button> --> 
+              <div id="data-type" class="btn-group" data-toggle="buttons-radio">
+               <!-- <button id="all" class="btn">All Exoplants</button>-->
+               <button id="start" class="btn">Solar<br> System</button> 
+                 <button id="rv" class="btn">Radial<br>Velocity</button>
+                 <button id="transit" class="btn">Transit<br>Method</button>  
               </div>
               <div id="graph-type" class="btn-group" data-toggle="buttons-radio">
                   <button id="orbits" class="btn radial">Orbits</button>  
-                <button id="graph1" class="btn chart">Graph Temp</button>
-                <button id="graph2" class="btn chart">Graph Radius</button>
-                 <button id="graph3" class="btn chart">Graph Period</button>
+                <button id="graph1" class="btn chart">Graph<br>Temp</button>
+                <button id="graph2" class="btn chart">Graph<br>Radius</button>
+                 <button id="graph3" class="btn chart">Graph<br>Period</button>
             </div>
 
             </div>
